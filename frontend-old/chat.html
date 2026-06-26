@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntelliPlant AI Chat</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; margin: 0; background: #07111f; color: #f4f8fb; }
+      .shell { max-width: 900px; margin: 0 auto; padding: 2rem; }
+      .card { background: #102235; border-radius: 16px; padding: 1.2rem; }
+      .messages { min-height: 300px; max-height: 500px; overflow: auto; padding-right: 0.4rem; }
+      .bubble { padding: 0.8rem 1rem; border-radius: 12px; margin-bottom: 0.7rem; max-width: 90%; line-height: 1.4; }
+      .user { background: #2f8ef5; margin-left: auto; }
+      .assistant { background: #1b3d5c; }
+      .meta { margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8; }
+      .insight-list { margin: 0.4rem 0 0 0; padding-left: 1rem; font-size: 0.9rem; }
+      textarea { width: 100%; border-radius: 8px; border: 1px solid #345; padding: 0.7rem; margin-top: 0.6rem; background: #0d1b27; color: #f4f8fb; }
+      button { background: #2f8ef5; color: white; border: none; border-radius: 8px; padding: 0.7rem 1rem; cursor: pointer; margin-top: 0.6rem; }
+      nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+      nav a { color: #8fb8d4; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #102235; }
+      nav a:hover { background: #1b3d5c; color: #f4f8fb; }
+      nav a.active { background: #2f8ef5; color: white; }
+      .sample-questions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+      .sample-questions button { font-size: 0.8rem; padding: 0.4rem 0.7rem; background: #0d1b27; border: 1px solid #345; }
+      .sample-questions button:hover { background: #1b3d5c; }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="documents.html">Documents</a>
+        <a href="chat.html" class="active">Chat</a>
+        <a href="graph.html">Graph</a>
+      </nav>
+
+      <section class="card">
+        <h1>IntelliPlant AI Assistant</h1>
+        <div class="sample-questions">
+          <button onclick="askQuestion('What does the maintenance guide say about pump inspection?')">Pump inspection</button>
+          <button onclick="askQuestion('Investigate a pump failure with RCA')">RCA analysis</button>
+          <button onclick="askQuestion('Check compliance for OISD standards')">Compliance</button>
+          <button onclick="askQuestion('What lessons were learned from past failures?')">Lessons learned</button>
+        </div>
+        <div class="messages" id="messages"></div>
+        <textarea id="message" rows="3" placeholder="Ask about maintenance, RCA, compliance, or lessons learned..."></textarea>
+        <button id="sendBtn">Send</button>
+      </section>
+    </main>
+
+    <script>
+      const API = 'http://localhost:8000/api/v1';
+      const messages = document.getElementById('messages');
+      const messageInput = document.getElementById('message');
+      const sendBtn = document.getElementById('sendBtn');
+
+      function appendBubble(text, role, details = null) {
+        const div = document.createElement('div');
+        div.className = `bubble ${role}`;
+        const textNode = document.createElement('div');
+        textNode.textContent = text;
+        div.appendChild(textNode);
+        if (details) {
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const routing = details.routing || {};
+          meta.innerHTML = `
+            <div>Primary agent: ${routing.primary_agent || 'supervisor'}</div>
+            <div>Agents: ${Array.isArray(details.agents) ? details.agents.join(', ') : 'n/a'}</div>
+          `;
+          div.appendChild(meta);
+          if (details.fusion && Array.isArray(details.fusion.insights)) {
+            const list = document.createElement('ul');
+            list.className = 'insight-list';
+            details.fusion.insights.forEach((insight) => {
+              const item = document.createElement('li');
+              item.textContent = insight;
+              list.appendChild(item);
+            });
+            div.appendChild(list);
+          }
+        }
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      async function askQuestion(text) {
+        messageInput.value = text;
+        sendBtn.click();
+      }
+
+      sendBtn.addEventListener('click', async () => {
+        const text = messageInput.value.trim();
+        if (!text) return;
+        appendBubble(text, 'user');
+        messageInput.value = '';
+        try {
+          const response = await fetch(`${API}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, session_id: 'frontend-chat' })
+          });
+          const data = await response.json();
+          appendBubble(data.response, 'assistant', data);
+        } catch (error) {
+          appendBubble(`Connection error: ${error.message}`, 'assistant');
+        }
+      });
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
+      });
+    </script>
+  </body>
+</html>

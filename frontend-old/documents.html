@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntelliPlant AI Documents</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; margin: 0; background: #07111f; color: #f4f8fb; }
+      .shell { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+      .card { background: #102235; border-radius: 16px; padding: 1.2rem; margin-bottom: 1rem; }
+      input { width: 100%; border-radius: 8px; border: 1px solid #345; padding: 0.7rem; margin-top: 0.6rem; background: #0d1b27; color: #f4f8fb; }
+      button { background: #2f8ef5; color: white; border: none; border-radius: 8px; padding: 0.7rem 1rem; cursor: pointer; margin-top: 0.6rem; }
+      .item { padding: 0.8rem 0; border-bottom: 1px solid #223b4d; }
+      .item:last-child { border-bottom: none; }
+      .meta { color: #8fb8d4; font-size: 0.9rem; }
+      .score { display: inline-block; background: #1b3d5c; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; }
+      nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+      nav a { color: #8fb8d4; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #102235; }
+      nav a:hover { background: #1b3d5c; color: #f4f8fb; }
+      nav a.active { background: #2f8ef5; color: white; }
+      .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+      .tab { padding: 0.5rem 1rem; border-radius: 8px; background: #0d1b27; cursor: pointer; color: #8fb8d4; }
+      .tab.active { background: #2f8ef5; color: white; }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="documents.html" class="active">Documents</a>
+        <a href="chat.html">Chat</a>
+        <a href="graph.html">Graph</a>
+      </nav>
+
+      <section class="card">
+        <h1>Documents</h1>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('search')" id="tab-search">Search</div>
+          <div class="tab" onclick="switchTab('list')" id="tab-list">All Documents</div>
+        </div>
+        <div id="searchSection">
+          <input id="query" placeholder="Search extracted content..." />
+          <button id="searchBtn">Search</button>
+        </div>
+        <div id="results"></div>
+      </section>
+    </main>
+
+    <script>
+      const API = 'http://localhost:8000/api/v1';
+      const results = document.getElementById('results');
+      const queryInput = document.getElementById('query');
+      const searchBtn = document.getElementById('searchBtn');
+
+      function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        if (tab === 'search') {
+          document.getElementById('searchSection').style.display = 'block';
+          searchDocuments();
+        } else {
+          document.getElementById('searchSection').style.display = 'block';
+          listDocuments();
+        }
+      }
+
+      async function searchDocuments() {
+        const query = queryInput.value.trim();
+        results.innerHTML = 'Loading...';
+        try {
+          const response = await fetch(`${API}/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
+          });
+          const data = await response.json();
+          if (!data.results || !data.results.length) {
+            results.innerHTML = '<div class="item">No matching documents found.</div>';
+            return;
+          }
+          results.innerHTML = data.results.map(item => `
+            <div class="item">
+              <strong>${item.title}</strong>
+              <span class="score">score: ${item.score}</span>
+              <div class="meta">ID: ${item.id}</div>
+              <div>${item.snippet}</div>
+            </div>
+          `).join('');
+        } catch (error) {
+          results.innerHTML = `<div class="item">Search failed: ${error.message}</div>`;
+        }
+      }
+
+      async function listDocuments() {
+        results.innerHTML = 'Loading...';
+        try {
+          const response = await fetch(`${API}/documents`);
+          const docs = await response.json();
+          if (!docs.length) {
+            results.innerHTML = '<div class="item">No documents uploaded yet.</div>';
+            return;
+          }
+          results.innerHTML = docs.map(doc => `
+            <div class="item">
+              <strong>${doc.name}</strong>
+              <div class="meta">Status: ${doc.status} | Size: ${doc.size} B</div>
+              <div>${doc.preview || ''}</div>
+            </div>
+          `).join('');
+        } catch (error) {
+          results.innerHTML = `<div class="item">Failed to load documents: ${error.message}</div>`;
+        }
+      }
+
+      searchBtn.addEventListener('click', searchDocuments);
+      queryInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') searchDocuments();
+      });
+      searchDocuments();
+    </script>
+  </body>
+</html>

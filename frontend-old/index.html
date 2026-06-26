@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IntelliPlant AI</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; margin: 0; background: #07111f; color: #f4f8fb; }
+      .shell { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+      .card { background: #102235; border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; }
+      button { background: #2f8ef5; color: white; border: none; border-radius: 8px; padding: 0.7rem 1rem; cursor: pointer; }
+      input, textarea { width: 100%; border-radius: 8px; border: 1px solid #345; padding: 0.7rem; margin-top: 0.5rem; background: #0d1b27; color: #f4f8fb; }
+      .pill { display: inline-block; margin-right: 0.5rem; margin-top: 0.5rem; padding: 0.35rem 0.7rem; background: #1b3d5c; border-radius: 999px; font-size: 0.9rem; }
+      .result { background: #0d1b27; padding: 0.8rem; border-radius: 8px; margin-top: 0.7rem; white-space: pre-wrap; font-size: 0.9rem; overflow-x: auto; }
+      nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+      nav a { color: #8fb8d4; text-decoration: none; padding: 0.5rem 1rem; border-radius: 8px; background: #102235; }
+      nav a:hover { background: #1b3d5c; color: #f4f8fb; }
+      nav a.active { background: #2f8ef5; color: white; }
+      h1, h2, h3 { margin-top: 0; }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <nav>
+        <a href="index.html" class="active">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="documents.html">Documents</a>
+        <a href="chat.html">Chat</a>
+        <a href="graph.html">Graph</a>
+      </nav>
+
+      <section class="card">
+        <h1>IntelliPlant AI</h1>
+        <p>Industrial knowledge intelligence platform with document ingestion, hybrid search, and supervisor-led chat.</p>
+        <div>
+          <span class="pill">Multi-agent workflow</span>
+          <span class="pill">Hybrid search</span>
+          <span class="pill">OCR ingestion</span>
+          <span class="pill">RCA analysis</span>
+          <span class="pill">Compliance check</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Upload a document</h2>
+        <input id="fileInput" type="file" />
+        <button id="uploadBtn">Upload</button>
+        <div id="uploadResult" class="result">No document uploaded yet.</div>
+      </section>
+
+      <section class="card">
+        <h2>Ask a question</h2>
+        <textarea id="message" rows="4" placeholder="Ask about pump inspection, RCA, compliance, or lessons learned..."></textarea>
+        <button id="askBtn">Send</button>
+        <div id="response" class="result">Waiting for a request...</div>
+      </section>
+    </main>
+
+    <script>
+      const API = 'http://localhost:8000/api/v1';
+      const uploadBtn = document.getElementById('uploadBtn');
+      const askBtn = document.getElementById('askBtn');
+      const uploadResult = document.getElementById('uploadResult');
+      const responseDiv = document.getElementById('response');
+      const fileInput = document.getElementById('fileInput');
+      const message = document.getElementById('message');
+
+      uploadBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) { uploadResult.textContent = 'Please choose a file to upload.'; return; }
+        const formData = new FormData();
+        formData.append('file', file);
+        uploadResult.textContent = 'Uploading...';
+        try {
+          const res = await fetch(`${API}/documents/upload`, { method: 'POST', body: formData });
+          const data = await res.json();
+          uploadResult.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          uploadResult.textContent = `Upload failed: ${error.message}`;
+        }
+      });
+
+      askBtn.addEventListener('click', async () => {
+        const payload = { message: message.value || 'Summarize the latest maintenance guidance.', session_id: 'demo-session' };
+        responseDiv.textContent = 'Working...';
+        try {
+          const res = await fetch(`${API}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          responseDiv.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          responseDiv.textContent = `Connection failed: ${error.message}`;
+        }
+      });
+    </script>
+  </body>
+</html>
